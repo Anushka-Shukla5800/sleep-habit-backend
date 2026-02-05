@@ -21,6 +21,14 @@ public class SleepSummary {
     private LocalDateTime sleepStartTime;
     private LocalDateTime sleepEndTime;
 
+    public SleepSummary() {}
 
-
+    public SleepSummary(LocalDate date, Integer sleepScore, Integer totalSleepMinutes, LocalDateTime sleepStartTime, LocalDateTime sleepEndTime) {
+        super();
+        this.date = date;
+        this.sleepScore = sleepScore;
+        this.totalSleepMinutes = totalSleepMinutes;
+        this.sleepStartTime = sleepStartTime;
+        this.sleepEndTime = sleepEndTime;
+    }
 }
