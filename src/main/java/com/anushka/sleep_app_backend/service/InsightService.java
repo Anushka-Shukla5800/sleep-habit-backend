@@ -1,5 +1,8 @@
 package com.anushka.sleep_app_backend.service;
 
+import com.anushka.sleep_app_backend.dto.HabitInsightDTO;
+import com.anushka.sleep_app_backend.dto.MetricComparisonDTO;
+import com.anushka.sleep_app_backend.dto.SampleSizeDTO;
 import com.anushka.sleep_app_backend.model.HabitSummary;
 import com.anushka.sleep_app_backend.model.SleepSummary;
 import com.anushka.sleep_app_backend.repository.HabitSummaryRepository;
@@ -11,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,53 +28,72 @@ public class InsightService {
         this.habitSummaryRepository = habitSummaryRepository;
     }
 
-    public Map<String,Integer> getInsightByDate(LocalDate startDate, LocalDate endDate){
+    public List<HabitInsightDTO> getInsightByDate(LocalDate startDate, LocalDate endDate){
 
         List<SleepSummary> sleepSummaries = sleepSummaryRepository.findByDateBetween(startDate, endDate);
         List<HabitSummary> habitSummaries = habitSummaryRepository.findByDateBetween(startDate, endDate);
 
         Map<LocalDate, SleepSummary> sleepByDate = sleepSummaries.stream().collect(Collectors.toMap(SleepSummary::getDate, s->s));
 
-        List<Integer> withWorkout = new ArrayList<>();
-        List<Integer> withoutWorkout = new ArrayList<>();
-        List<Integer> withCaffeine = new ArrayList<>();
-        List<Integer> withoutCaffeine = new ArrayList<>();
-        List<Integer> withScreenBeforeBed = new ArrayList<>();
-        List<Integer> withoutScreenBeforeBed = new ArrayList<>();
 
-        for(HabitSummary habit : habitSummaries){
+        return List.of( buildInsight("Workout", sleepByDate, habitSummaries, HabitSummary::getWorkedOut),
+                buildInsight("Caffeine", sleepByDate, habitSummaries, HabitSummary::getCaffeineAfter4pm),
+                buildInsight("ScreenTime", sleepByDate, habitSummaries, HabitSummary::getScreenUsedWithinLastHour));
+
+    }
+
+    private HabitInsightDTO buildInsight(String habitName,
+                                         Map<LocalDate,SleepSummary> sleepByDate,
+                                         List<HabitSummary> habits,
+                                         Function<HabitSummary, Boolean> habitCondition){
+
+        List<Integer> totalWith = new ArrayList<>();
+        List<Integer> totalWithout = new ArrayList<>();
+
+        List<Integer> deepWith = new ArrayList<>();
+        List<Integer> deepWithout = new ArrayList<>();
+
+        for(HabitSummary habit : habits){
 
             SleepSummary sleep = sleepByDate.get(habit.getDate());
-
             if(sleep == null)
                 continue;
 
-            int sleepMinutes = sleep.getTotalSleepMinutes();
+            Boolean hasHabit = Boolean.TRUE.equals(habitCondition.apply(habit));
 
-            if(Boolean.TRUE.equals(habit.getWorkedOut()))
-                withWorkout.add(sleepMinutes);
-            else
-                withoutWorkout.add(sleepMinutes);
-            if(Boolean.TRUE.equals(habit.getCaffeineAfter4pm()))
-                withCaffeine.add(sleepMinutes);
-            else
-                withoutCaffeine.add(sleepMinutes);
-            if(Boolean.TRUE.equals(habit.getScreenUsedWithinLastHour()))
-                withScreenBeforeBed.add(sleepMinutes);
-            else
-                withoutScreenBeforeBed.add(sleepMinutes);
-
+            if(hasHabit) {
+                totalWith.add(sleep.getTotalSleepMinutes());
+                deepWith.add(sleep.getDeepSleepMinutes());
+            }else {
+                totalWithout.add(sleep.getTotalSleepMinutes());
+                deepWithout.add(sleep.getDeepSleepMinutes());
+            }
         }
 
-        Map<String,Integer> result = new HashMap<>();
-        result.put("avgSleepWithWorkout",avg(withWorkout));
-        result.put("avgSleepWithoutWorkout",avg(withoutWorkout));
-        result.put("avgSleepWithCaffeine",avg(withCaffeine));
-        result.put("avgSleepWithoutCaffeine",avg(withoutCaffeine));
-        result.put("avgSleepWithScreen",avg(withScreenBeforeBed));
-        result.put("avgSleepWithoutScreen",avg(withoutScreenBeforeBed));
+        MetricComparisonDTO totalSleep = new MetricComparisonDTO(avg(totalWith),avg(totalWithout));
+        MetricComparisonDTO deepSleep = new MetricComparisonDTO(avg(deepWith),avg(deepWithout));
 
-        return result;
+        SampleSizeDTO sampleSize = new SampleSizeDTO(totalWith.size(),totalWithout.size());
+        String interpretation = generateInterpretation(habitName, totalSleep, deepSleep);
+
+        return new HabitInsightDTO(
+                habitName,
+                totalSleep,
+                deepSleep,
+                sampleSize,
+                interpretation);
+
+    }
+
+    private String  generateInterpretation(String habitName,MetricComparisonDTO totalSleep, MetricComparisonDTO deepSleep) {
+
+        if(totalSleep.getDifference()>0 && deepSleep.getDifference()>0)
+            return "You tend to sleep longer and get more deep sleep on days with "+habitName.toLowerCase()+".";
+        else if(totalSleep.getDifference()<0 && deepSleep.getDifference()<0)
+            return "You tend to sleep less and get less deep sleep on days with "+habitName.toLowerCase()+".";
+        else{
+            return "The impact of "+habitName.toLowerCase()+" appears to be mixed.";
+        }
 
     }
 
