@@ -59,7 +59,7 @@ public class InsightService {
             if(sleep == null)
                 continue;
 
-            Boolean hasHabit = Boolean.TRUE.equals(habitCondition.apply(habit));
+            boolean hasHabit = Boolean.TRUE.equals(habitCondition.apply(habit));
 
             if(hasHabit) {
                 totalWith.add(sleep.getTotalSleepMinutes());

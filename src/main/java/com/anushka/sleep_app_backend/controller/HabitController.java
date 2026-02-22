@@ -1,5 +1,6 @@
 package com.anushka.sleep_app_backend.controller;
 
+import com.anushka.sleep_app_backend.dto.HabitSummaryRequestDto;
 import com.anushka.sleep_app_backend.model.HabitSummary;
 import com.anushka.sleep_app_backend.service.HabitService;
 import org.springframework.http.HttpStatus;
@@ -20,8 +21,13 @@ public class HabitController {
     }
 
     @PostMapping
-    public ResponseEntity<HabitSummary> saveHabitSummary(@RequestBody HabitSummary habitSummary){
+    public ResponseEntity<HabitSummary> saveHabitSummary(@RequestBody HabitSummaryRequestDto requestDto){
 
+        HabitSummary habitSummary = new HabitSummary();
+        habitSummary.setWorkedOut(requestDto.getWorkedOut());
+        habitSummary.setCaffeineAfter4pm(requestDto.getCaffeineAfter4pm());
+        habitSummary.setScreenUsedWithinLastHour(requestDto.getScreenUsedWithinLastHour());
+        habitSummary.setDate(requestDto.getDate());
         HabitSummary saved =  habitService.saveHabitSummary(habitSummary);
         return new ResponseEntity<>(saved, HttpStatus.CREATED);
     }

@@ -1,5 +1,6 @@
 package com.anushka.sleep_app_backend.controller;
 
+import com.anushka.sleep_app_backend.dto.SleepSummaryRequestDto;
 import com.anushka.sleep_app_backend.model.SleepSummary;
 import com.anushka.sleep_app_backend.service.SleepService;
 import org.springframework.http.HttpStatus;
@@ -19,7 +20,13 @@ public class SleepController {
     }
 
     @PostMapping
-    public ResponseEntity<SleepSummary> saveSleepSummary(@RequestBody SleepSummary sleepSummary) {
+    public ResponseEntity<SleepSummary> saveSleepSummary(@RequestBody SleepSummaryRequestDto requestDto) {
+        SleepSummary sleepSummary = new SleepSummary();
+        sleepSummary.setDate(requestDto.getDate());
+        sleepSummary.setDeepSleepMinutes(requestDto.getDeepSleepMinutes());
+        sleepSummary.setTotalSleepMinutes(requestDto.getTotalSleepMinutes());
+        sleepSummary.setSleepEndTime(requestDto.getSleepEndTime());
+        sleepSummary.setSleepStartTime(requestDto.getSleepStartTime());
         SleepSummary save = this.sleepService.saveSleepSummary(sleepSummary);
         return new ResponseEntity<>(save, HttpStatus.CREATED);
     }
